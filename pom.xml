@@ -21,6 +21,13 @@
         <thucydides.jira.version>0.9.106</thucydides.jira.version>
     </properties>
 
+    <scm>
+        <connection>scm:git:git@github.com:thucydides-webtests/thucydides-jira-requirements-provider.git</connection>
+        <developerConnection>scm:git:git@github.com:thucydides-webtests/thucydides-jira-requirements-provider.git</developerConnection>
+        <url>scm:git:git@github.com:thucydides-webtests/thucydides-jira-requirements-provider.git</url>
+    </scm>
+
+
     <dependencies>
         <dependency>
             <groupId>net.thucydides</groupId>
