@@ -16,8 +16,8 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <thucydides.version>0.9.208-SNAPSHOT</thucydides.version>
-        <thucydides.jira.version>0.9.206-SNAPSHOT</thucydides.jira.version>
+        <thucydides.version>0.9.208</thucydides.version>
+        <thucydides.jira.version>0.9.208</thucydides.jira.version>
     </properties>
 
     <scm>
