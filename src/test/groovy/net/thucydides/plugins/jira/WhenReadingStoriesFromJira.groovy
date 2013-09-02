@@ -13,10 +13,16 @@ class WhenReadingStoriesFromJira extends Specification {
 
 
     JIRAConfiguration configuration
+    def environmentVariables = new MockEnvironmentVariables()
     def requirementsProvider
 
     def setup() {
-        configuration = new SystemPropertiesJIRAConfiguration()
+        environmentVariables.setProperty('jira.url','https://wakaleo.atlassian.net')
+        environmentVariables.setProperty('jira.username','bruce')
+        environmentVariables.setProperty('jira.password','batm0bile')
+        environmentVariables.setProperty('jira.project','TRAD')
+
+        configuration = new SystemPropertiesJIRAConfiguration(environmentVariables)
         requirementsProvider = new JIRARequirementsProvider(configuration)
     }
 
@@ -26,7 +32,7 @@ class WhenReadingStoriesFromJira extends Specification {
         then:
             !requirements.isEmpty()
         and:
-            requirements.each { requirement -> requirement.type == 'epic' }
+            requirements.each { requirement -> requirement.type == 'Epic' }
     }
 
     def "should read stories beneath the epics"() {
@@ -42,7 +48,7 @@ class WhenReadingStoriesFromJira extends Specification {
         given:
             def requirementsProvider = new JIRARequirementsProvider(configuration)
         when:
-            def requirement = requirementsProvider.getRequirementFor(TestTag.withName("Bring premium listings to the attention of buyers").andType("epic"))
+            def requirement = requirementsProvider.getRequirementFor(TestTag.withName("Bring premium listings to the attention of buyers").andType("Epic"))
         then:
             requirement.isPresent() && requirement.get().getCardNumber() == "TRAD-6"
     }
@@ -66,8 +72,8 @@ class WhenReadingStoriesFromJira extends Specification {
         when:
             def tags = requirementsProvider.getTagsFor(testOutcome)
         then:
-            tags.contains(TestTag.withName("Post item for sale").andType("story")) &&
-            tags.contains(TestTag.withName("Selling stuff").andType("epic"))
+            tags.contains(TestTag.withName("Post item for sale").andType("Story")) &&
+            tags.contains(TestTag.withName("Selling stuff").andType("Epic"))
     }
 
 
