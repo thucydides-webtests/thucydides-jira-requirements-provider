@@ -16,7 +16,6 @@ import net.thucydides.plugins.jira.client.JerseyJiraClient;
 import net.thucydides.plugins.jira.domain.IssueSummary;
 import net.thucydides.plugins.jira.service.JIRAConfiguration;
 import net.thucydides.plugins.jira.service.SystemPropertiesJIRAConfiguration;
-import org.apache.commons.lang3.StringUtils;
 import org.json.JSONException;
 import org.slf4j.LoggerFactory;
 
@@ -170,24 +169,6 @@ public class JIRARequirementsProvider implements RequirementsTagProvider {
         return Optional.absent();
     }
 
-    public Optional<Requirement> getParentRequirementOf(String key) {
-        for (Requirement requirement : getFlattenedRequirements()) {
-            if (containsRequirementWithId(key, requirement.getChildren())) {
-                return Optional.of(requirement);
-            }
-        }
-        return Optional.absent();
-    }
-
-    private boolean containsRequirementWithId(String key, List<Requirement> requirements) {
-        for(Requirement requirement : requirements) {
-            if (requirement.getCardNumber().equals(key)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     @Override
     public Set<TestTag> getTagsFor(TestOutcome testOutcome) {
         List<String> issues  = testOutcome.getIssueKeys();
@@ -199,56 +180,10 @@ public class JIRARequirementsProvider implements RequirementsTagProvider {
     }
 
     private Collection<? extends TestTag> tagsFromIssue(String issueKey) {
-
-        System.out.println("Reading tags from issue " + issueKey);
-        List<TestTag> tags = Lists.newArrayList();
-        String decodedIssueKey = decoded(issueKey);
-        addIssueTags(tags, decodedIssueKey);
-        addRequirementTags(tags, decodedIssueKey);
-        return tags;
-    }
-
-    private void addRequirementTags(List<TestTag> tags, String decodedIssueKey) {
-        List<Requirement> parentRequirements = getParentRequirementsOf(decodedIssueKey);
-        for(Requirement parentRequirement : parentRequirements) {
-            TestTag parentTag = TestTag.withName(parentRequirement.getName())
-                                       .andType(parentRequirement.getType());
-            tags.add(parentTag);
-        }
-    }
-
-    private void addIssueTags(List<TestTag> tags, String decodedIssueKey) {
-        Optional<IssueSummary> behaviourIssue = Optional.absent();
-        try {
-            behaviourIssue = jiraClient.findByKey(decodedIssueKey);
-        } catch (JSONException e) {
-            logger.warn("Could not read tags for issue " + decodedIssueKey, e);
-        }
-        if (behaviourIssue.isPresent()) {
-            tags.add(TestTag.withName(behaviourIssue.get().getSummary()).andType(behaviourIssue.get().getType()));
-        }
-    }
-
-    private List<Requirement> getParentRequirementsOf(String issueKey) {
-        List<Requirement> parentRequirements = Lists.newArrayList();
-
-        Optional<Requirement> parentRequirement = getParentRequirementOf(issueKey);
-        if (parentRequirement.isPresent()) {
-            parentRequirements.add(parentRequirement.get());
-            parentRequirements.addAll(getParentRequirementsOf(parentRequirement.get().getCardNumber()));
-        }
-
-        return parentRequirements;
-    }
-
-    private String decoded(String issueKey) {
-        if (issueKey.startsWith("#")) {
-            issueKey = issueKey.substring(1);
-        }
-        if (StringUtils.isNumeric(issueKey)) {
-            issueKey = getProjectKey() + "-" + issueKey;
-        }
-        return issueKey;
+        IssueTagReader tagReader = new IssueTagReader(jiraClient, getFlattenedRequirements(), projectKey);
+        return tagReader.addIssueTags(issueKey)
+                        .addRequirementTags(issueKey)
+                        .addVersionTags(issueKey).getTags();
     }
 
     private List<Requirement> getFlattenedRequirements(){

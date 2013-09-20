@@ -64,6 +64,28 @@ class WhenReadingStoriesFromJira extends Specification {
             parentRequirement.isPresent() && parentRequirement.get().cardNumber == "TRAD-1"
     }
 
+    def "should return Optional.absent() when no issues are specified"() {
+        given:
+            def requirementsProvider = new JIRARequirementsProvider(configuration)
+            def testOutcome = Mock(TestOutcome)
+            testOutcome.getIssueKeys() >> []
+        when:
+            def parentRequirement = requirementsProvider.getParentRequirementOf(testOutcome)
+        then:
+            !parentRequirement.isPresent()
+    }
+
+    def "should return Optional.absent() for a non-existant issue"() {
+        given:
+            def requirementsProvider = new JIRARequirementsProvider(configuration)
+            def testOutcome = Mock(TestOutcome)
+            testOutcome.getIssueKeys() >> ["UNKNOWN"]
+        when:
+            def parentRequirement = requirementsProvider.getParentRequirementOf(testOutcome)
+        then:
+            !parentRequirement.isPresent()
+    }
+
     def "should find tags for a given issue"() {
         given:
             def requirementsProvider = new JIRARequirementsProvider(configuration)
@@ -75,6 +97,5 @@ class WhenReadingStoriesFromJira extends Specification {
             tags.contains(TestTag.withName("Post item for sale").andType("Story")) &&
             tags.contains(TestTag.withName("Selling stuff").andType("Epic"))
     }
-
 
 }
