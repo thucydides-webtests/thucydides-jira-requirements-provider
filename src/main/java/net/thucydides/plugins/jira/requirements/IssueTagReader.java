@@ -1,5 +1,6 @@
 package net.thucydides.plugins.jira.requirements;
 
+import ch.lambdaj.function.convert.Converter;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
@@ -12,7 +13,11 @@ import org.apache.commons.lang3.StringUtils;
 import org.json.JSONException;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+
+import static ch.lambdaj.Lambda.convert;
 
 public class IssueTagReader {
 
@@ -31,17 +36,22 @@ public class IssueTagReader {
 
     public IssueTagReader addVersionTags(String issueKey) {
         String decodedIssueKey = decoded(issueKey);
-        List<Version> versions = null;
         try {
-            versions = jiraClient.findVersionsForProject(projectKey);
+            Optional<IssueSummary> issue = jiraClient.findByKey(issueKey);
+            if (issue.isPresent()) {
+                addVersionTags(issue.get().getFixVersions());
+            }
         } catch (JSONException e) {
             logger.warn("Could not read versions for issue " + decodedIssueKey, e);
         }
-        for (Version version : versions) {
-            TestTag versionTag = TestTag.withName(version.getName()).andType("Version");
+        return this;
+    }
+
+    private void addVersionTags(List<String> versions) {
+        for(String version : versions) {
+            TestTag versionTag = TestTag.withName(version).andType("Version");
             tags.add(versionTag);
         }
-        return this;
     }
 
     public IssueTagReader addRequirementTags(String issueKey) {

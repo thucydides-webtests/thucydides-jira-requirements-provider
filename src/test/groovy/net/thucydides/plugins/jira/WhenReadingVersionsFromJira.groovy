@@ -34,6 +34,8 @@ class WhenReadingVersionsFromJira extends Specification {
         when:
             def tags = requirementsProvider.getTagsFor(testOutcome)
         then:
+            tags.size() == 3
+        and:
             tags.contains(TestTag.withName("Iteration 1.1").andType("Version"))
         and:
             tags.contains(TestTag.withName("Version 1.0").andType("Version"))
