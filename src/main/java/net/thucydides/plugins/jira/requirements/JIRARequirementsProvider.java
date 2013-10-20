@@ -89,7 +89,8 @@ public class JIRARequirementsProvider implements RequirementsTagProvider {
         return Requirement.named(issue.getSummary())
                 .withOptionalCardNumber(issue.getKey())
                 .withType(issue.getType())
-                .withNarrativeText(issue.getRenderedDescription());
+                .withNarrativeText(issue.getRenderedDescription())
+                .withReleaseVersions(issue.getFixVersions());
     }
 
     private List<Requirement> findChildrenFor(Requirement parent, int level) {

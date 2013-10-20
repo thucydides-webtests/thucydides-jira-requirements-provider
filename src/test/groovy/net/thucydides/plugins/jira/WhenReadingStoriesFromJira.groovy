@@ -97,5 +97,4 @@ class WhenReadingStoriesFromJira extends Specification {
             tags.contains(TestTag.withName("Post item for sale").andType("Story")) &&
             tags.contains(TestTag.withName("Selling stuff").andType("Epic"))
     }
-
 }
