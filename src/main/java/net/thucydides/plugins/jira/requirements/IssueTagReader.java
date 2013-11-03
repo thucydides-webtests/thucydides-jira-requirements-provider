@@ -1,6 +1,5 @@
 package net.thucydides.plugins.jira.requirements;
 
-import ch.lambdaj.function.convert.Converter;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
@@ -8,16 +7,11 @@ import net.thucydides.core.model.TestTag;
 import net.thucydides.core.requirements.model.Requirement;
 import net.thucydides.plugins.jira.client.JerseyJiraClient;
 import net.thucydides.plugins.jira.domain.IssueSummary;
-import net.thucydides.plugins.jira.domain.Version;
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONException;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-
-import static ch.lambdaj.Lambda.convert;
 
 public class IssueTagReader {
 

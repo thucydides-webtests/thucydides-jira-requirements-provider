@@ -44,10 +44,11 @@ public class JIRARequirementsProvider implements RequirementsTagProvider {
 
     public JIRARequirementsProvider(JIRAConfiguration jiraConfiguration) {
         logConnectionDetailsFor(jiraConfiguration);
+        projectKey = jiraConfiguration.getProject();
         jiraClient = new JerseyJiraClient(jiraConfiguration.getJiraUrl(),
                                           jiraConfiguration.getJiraUser(),
-                                          jiraConfiguration.getJiraPassword());
-        this.projectKey = jiraConfiguration.getProject();
+                                          jiraConfiguration.getJiraPassword(),
+                                          projectKey);
     }
 
     private void logConnectionDetailsFor(JIRAConfiguration jiraConfiguration) {
