@@ -32,7 +32,7 @@ import static ch.lambdaj.Lambda.convert;
 public class JIRARequirementsProvider implements RequirementsTagProvider {
 
     private List<Requirement> requirements = null;
-    private final JerseyJiraClient jiraClient;
+    private final ConfigurableJiraClient jiraClient;
     private final String projectKey;
 
     private List<String> requirementsLinks = ImmutableList.of("Epic Link");
@@ -45,10 +45,10 @@ public class JIRARequirementsProvider implements RequirementsTagProvider {
     public JIRARequirementsProvider(JIRAConfiguration jiraConfiguration) {
         logConnectionDetailsFor(jiraConfiguration);
         projectKey = jiraConfiguration.getProject();
-        jiraClient = new JerseyJiraClient(jiraConfiguration.getJiraUrl(),
-                                          jiraConfiguration.getJiraUser(),
-                                          jiraConfiguration.getJiraPassword(),
-                                          projectKey);
+        jiraClient = new ConfigurableJiraClient(jiraConfiguration.getJiraUrl(),
+                                                jiraConfiguration.getJiraUser(),
+                                                jiraConfiguration.getJiraPassword(),
+                                                projectKey);
     }
 
     private void logConnectionDetailsFor(JIRAConfiguration jiraConfiguration) {
