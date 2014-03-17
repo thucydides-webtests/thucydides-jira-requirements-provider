@@ -53,6 +53,23 @@ class WhenReadingStoriesFromJira extends Specification {
             requirement.isPresent() && requirement.get().getCardNumber() == "TRAD-6"
     }
 
+    def "should get the story description from a custom field if required"() {
+        given:
+            def requirementsProvider = new JIRARequirementsProvider(configuration)
+            def testOutcome = Mock(TestOutcome)
+            testOutcome.getIssueKeys() >> ["TRAD-5"]
+        when:
+            environmentVariables.setProperty("jira.narrative.field","User Story")
+        and:
+            def requirement = requirementsProvider.getParentRequirementOf(testOutcome);
+        then:
+            requirement.isPresent() && requirement.get().getNarrativeText() ==
+"""As a seller
+I want to post my items for sale online
+So that buyers can view and purchase my items"""
+    }
+
+
     def "should find the parent requirement from a given issue"() {
         given:
             def requirementsProvider = new JIRARequirementsProvider(configuration)
@@ -97,4 +114,5 @@ class WhenReadingStoriesFromJira extends Specification {
             tags.contains(TestTag.withName("Post item for sale").andType("Story")) &&
             tags.contains(TestTag.withName("Selling stuff").andType("Epic"))
     }
+
 }

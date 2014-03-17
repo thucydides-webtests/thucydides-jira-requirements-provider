@@ -10,9 +10,11 @@ import net.thucydides.core.guice.Injectors;
 import net.thucydides.core.model.TestOutcome;
 import net.thucydides.core.model.TestTag;
 import net.thucydides.core.requirements.RequirementsTagProvider;
+import net.thucydides.core.requirements.model.Example;
 import net.thucydides.core.requirements.model.Requirement;
 import net.thucydides.core.util.EnvironmentVariables;
 import net.thucydides.plugins.jira.client.JerseyJiraClient;
+import net.thucydides.plugins.jira.domain.CustomFieldCast;
 import net.thucydides.plugins.jira.domain.IssueSummary;
 import net.thucydides.plugins.jira.service.JIRAConfiguration;
 import net.thucydides.plugins.jira.service.SystemPropertiesJIRAConfiguration;
@@ -24,7 +26,7 @@ import java.util.List;
 import java.util.Set;
 
 import static ch.lambdaj.Lambda.convert;
-
+import static net.thucydides.plugins.jira.requirements.JIRARequirementsConfiguration.JIRA_CUSTOM_NARRATIVE_FIELD;
 
 /**
  * Integrate Thucydides reports with requirements, epics and stories in a JIRA server.
@@ -32,23 +34,36 @@ import static ch.lambdaj.Lambda.convert;
 public class JIRARequirementsProvider implements RequirementsTagProvider {
 
     private List<Requirement> requirements = null;
-    private final ConfigurableJiraClient jiraClient;
+    private final JerseyJiraClient jiraClient;
     private final String projectKey;
+    private final EnvironmentVariables environmentVariables;
 
     private List<String> requirementsLinks = ImmutableList.of("Epic Link");
     private final org.slf4j.Logger logger = LoggerFactory.getLogger(JIRARequirementsProvider.class);
 
     public JIRARequirementsProvider() {
-        this(new SystemPropertiesJIRAConfiguration(Injectors.getInjector().getInstance(EnvironmentVariables.class)));
+        this(new SystemPropertiesJIRAConfiguration(Injectors.getInjector().getInstance(EnvironmentVariables.class)),
+             Injectors.getInjector().getInstance(EnvironmentVariables.class));
     }
 
     public JIRARequirementsProvider(JIRAConfiguration jiraConfiguration) {
+        this(jiraConfiguration, Injectors.getInjector().getInstance(EnvironmentVariables.class));
+    }
+
+    public JIRARequirementsProvider(JIRAConfiguration jiraConfiguration, EnvironmentVariables environmentVariables) {
         logConnectionDetailsFor(jiraConfiguration);
         projectKey = jiraConfiguration.getProject();
+        this.environmentVariables = environmentVariables;
         jiraClient = new ConfigurableJiraClient(jiraConfiguration.getJiraUrl(),
                                                 jiraConfiguration.getJiraUser(),
                                                 jiraConfiguration.getJiraPassword(),
-                                                projectKey);
+                                                projectKey).usingCustomFields(customFieldsDefinedIn(environmentVariables));
+    }
+
+    private List<String> customFieldsDefinedIn(EnvironmentVariables environmentVariables) {
+        List<String> customFields = Lists.newArrayList();
+
+        return customFields;
     }
 
     private void logConnectionDetailsFor(JIRAConfiguration jiraConfiguration) {
@@ -87,12 +102,32 @@ public class JIRARequirementsProvider implements RequirementsTagProvider {
     }
 
     private Requirement requirementFrom(IssueSummary issue) {
+
         return Requirement.named(issue.getSummary())
                 .withOptionalCardNumber(issue.getKey())
                 .withType(issue.getType())
-                .withNarrativeText(issue.getRenderedDescription())
+                .withNarrativeText(narativeTextFrom(issue))
                 .withReleaseVersions(issue.getFixVersions());
     }
+
+    private String narativeTextFrom(IssueSummary issue) {
+        Optional<String> customFieldName = Optional.fromNullable(environmentVariables.getProperty(JIRA_CUSTOM_NARRATIVE_FIELD.getName()));
+        if (customFieldName.isPresent()) {
+            return customFieldNameFor(issue, customFieldName.get()).or(issue.getRenderedDescription());
+        } else {
+            return issue.getRenderedDescription();
+        }
+
+    }
+
+    private Optional<String> customFieldNameFor(IssueSummary issue, String customFieldName) {
+        if (issue.customField(customFieldName).isPresent()) {
+            return Optional.of(issue.customField(customFieldName).get().asString());
+        } else {
+            return Optional.absent();
+        }
+    }
+
 
     private List<Requirement> findChildrenFor(Requirement parent, int level) {
         List<IssueSummary> children = Lists.newArrayList();

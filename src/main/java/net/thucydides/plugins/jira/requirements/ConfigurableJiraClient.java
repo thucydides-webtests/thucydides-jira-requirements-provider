@@ -27,8 +27,13 @@ public class ConfigurableJiraClient extends JerseyJiraClient {
     private final org.slf4j.Logger logger = LoggerFactory.getLogger(JIRARequirementsProvider.class);
 
     public ConfigurableJiraClient(String url, String username, String password, String project) {
-        super(url, username, password, project);
+        super(url, username, password, project, customFields());
         environmentVariables = Injectors.getInjector().getInstance(EnvironmentVariables.class);
+    }
+
+    private static List<String> customFields() {
+        EnvironmentVariables environmentVariables = Injectors.getInjector().getInstance(EnvironmentVariables.class);
+        return Lists.newArrayList();
     }
 
     @Override
