@@ -10,14 +10,13 @@ import net.thucydides.core.guice.Injectors;
 import net.thucydides.core.model.TestOutcome;
 import net.thucydides.core.model.TestTag;
 import net.thucydides.core.requirements.RequirementsTagProvider;
-import net.thucydides.core.requirements.model.Example;
 import net.thucydides.core.requirements.model.Requirement;
 import net.thucydides.core.util.EnvironmentVariables;
 import net.thucydides.plugins.jira.client.JerseyJiraClient;
-import net.thucydides.plugins.jira.domain.CustomFieldCast;
 import net.thucydides.plugins.jira.domain.IssueSummary;
 import net.thucydides.plugins.jira.service.JIRAConfiguration;
 import net.thucydides.plugins.jira.service.SystemPropertiesJIRAConfiguration;
+import org.apache.commons.lang3.StringUtils;
 import org.json.JSONException;
 import org.slf4j.LoggerFactory;
 
@@ -26,6 +25,7 @@ import java.util.List;
 import java.util.Set;
 
 import static ch.lambdaj.Lambda.convert;
+import static net.thucydides.plugins.jira.requirements.JIRARequirementsConfiguration.JIRA_CUSTOM_FIELD;
 import static net.thucydides.plugins.jira.requirements.JIRARequirementsConfiguration.JIRA_CUSTOM_NARRATIVE_FIELD;
 
 /**
@@ -60,10 +60,34 @@ public class JIRARequirementsProvider implements RequirementsTagProvider {
                                                 projectKey).usingCustomFields(customFieldsDefinedIn(environmentVariables));
     }
 
+    private List<String> definedCustomFields() {
+        List<String> customFields = Lists.newArrayList();
+        int customFieldIndex = 1;
+        while(addCustomFieldIfDefined(environmentVariables, customFields, customFieldNumber(customFieldIndex++)));
+        return customFields;
+    }
+
     private List<String> customFieldsDefinedIn(EnvironmentVariables environmentVariables) {
         List<String> customFields = Lists.newArrayList();
-
+        addCustomFieldIfDefined(environmentVariables, customFields,
+                                JIRARequirementsConfiguration.JIRA_CUSTOM_NARRATIVE_FIELD.getName());
+        customFields.addAll(definedCustomFields());
         return customFields;
+    }
+
+    private String customFieldNumber(int customFieldIndex) {
+        return JIRA_CUSTOM_FIELD.getName() + "." + customFieldIndex;
+    }
+
+    private boolean addCustomFieldIfDefined(EnvironmentVariables environmentVariables,
+                                         List<String> customFields,
+                                         String customField) {
+        String customFieldName = environmentVariables.getProperty(customField);
+        if (StringUtils.isNotEmpty(customFieldName)) {
+            customFields.add(customFieldName);
+            return true;
+        }
+        return false;
     }
 
     private void logConnectionDetailsFor(JIRAConfiguration jiraConfiguration) {
@@ -103,19 +127,28 @@ public class JIRARequirementsProvider implements RequirementsTagProvider {
 
     private Requirement requirementFrom(IssueSummary issue) {
 
-        return Requirement.named(issue.getSummary())
+        Requirement baseRequirement = Requirement.named(issue.getSummary())
                 .withOptionalCardNumber(issue.getKey())
                 .withType(issue.getType())
-                .withNarrativeText(narativeTextFrom(issue))
+                .withNarrative(narativeTextFrom(issue))
                 .withReleaseVersions(issue.getFixVersions());
+
+        for(String fieldName : definedCustomFields()) {
+            if (issue.customField(fieldName).isPresent()) {
+                String value = issue.customField(fieldName).get().asString();
+                String renderedValue = issue.getRendered().customField(fieldName).get();
+                baseRequirement = baseRequirement.withCustomField(fieldName).setTo(value, renderedValue);
+            }
+        }
+        return baseRequirement;
     }
 
     private String narativeTextFrom(IssueSummary issue) {
         Optional<String> customFieldName = Optional.fromNullable(environmentVariables.getProperty(JIRA_CUSTOM_NARRATIVE_FIELD.getName()));
         if (customFieldName.isPresent()) {
-            return customFieldNameFor(issue, customFieldName.get()).or(issue.getRenderedDescription());
+            return customFieldNameFor(issue, customFieldName.get()).or(issue.getRendered().getDescription());
         } else {
-            return issue.getRenderedDescription();
+            return issue.getRendered().getDescription();
         }
 
     }

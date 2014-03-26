@@ -1,7 +1,5 @@
 package net.thucydides.plugins.jira
 
-import net.thucydides.core.model.TestOutcome
-import net.thucydides.core.model.TestTag
 import net.thucydides.core.util.MockEnvironmentVariables
 import net.thucydides.plugins.jira.requirements.JIRARequirementsProvider
 import net.thucydides.plugins.jira.service.JIRAConfiguration

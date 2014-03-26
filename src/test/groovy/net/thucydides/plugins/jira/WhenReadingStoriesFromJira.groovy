@@ -23,7 +23,7 @@ class WhenReadingStoriesFromJira extends Specification {
         environmentVariables.setProperty('jira.project','TRAD')
 
         configuration = new SystemPropertiesJIRAConfiguration(environmentVariables)
-        requirementsProvider = new JIRARequirementsProvider(configuration)
+        requirementsProvider = new JIRARequirementsProvider(configuration,environmentVariables)
     }
 
     def "should read epics as the top level requirements"() {
@@ -53,7 +53,7 @@ class WhenReadingStoriesFromJira extends Specification {
             requirement.isPresent() && requirement.get().getCardNumber() == "TRAD-6"
     }
 
-    def "should get the story description from a custom field if required"() {
+    def "should get the story description from the description field by default"() {
         given:
             def requirementsProvider = new JIRARequirementsProvider(configuration)
             def testOutcome = Mock(TestOutcome)
@@ -63,16 +63,55 @@ class WhenReadingStoriesFromJira extends Specification {
         and:
             def requirement = requirementsProvider.getParentRequirementOf(testOutcome);
         then:
-            requirement.isPresent() && requirement.get().getNarrativeText() ==
-"""As a seller
-I want to post my items for sale online
-So that buyers can view and purchase my items"""
+            requirement.isPresent() && requirement.get().narrative.text.contains("In order to let buyers view and purchase my items")
+    }
+
+    def "should get the story description from a custom field if required"() {
+        given:
+            def requirementsProvider = new JIRARequirementsProvider(configuration,environmentVariables)
+            def testOutcome = Mock(TestOutcome)
+            testOutcome.getIssueKeys() >> ["TRAD-5"]
+        when:
+            environmentVariables.setProperty("jira.narrative.field","User Story")
+        and:
+            def requirement = requirementsProvider.getParentRequirementOf(testOutcome);
+        then:
+            requirement.isPresent() && requirement.get().narrative.text.contains("As a seller")
+    }
+
+
+    def "should store custom custom field values in requirements"() {
+        given:
+            def testOutcome = Mock(TestOutcome)
+            testOutcome.getIssueKeys() >> ["TRAD-5"]
+        when:
+            environmentVariables.setProperty('jira.custom.field.1',"User Story")
+            environmentVariables.setProperty('jira.custom.field.2',"Acceptance Criteria")
+
+            configuration = new SystemPropertiesJIRAConfiguration(environmentVariables)
+            def requirementsProvider = new JIRARequirementsProvider(configuration, environmentVariables)
+
+        and:
+            def requirement = requirementsProvider.getParentRequirementOf(testOutcome);
+        then:
+            requirement.get().customFields == ["User Story", "Acceptance Criteria"]
+        and:
+            def userStoryText = requirement.get().getCustomField("User Story").get().text
+            userStoryText.contains("As a seller") &&
+            userStoryText.contains("I want to post my items for sale online") &&
+            userStoryText.contains("So that buyers can view and purchase my items")
+        and:
+            def acText = requirement.get().getCustomField("Acceptance Criteria").get().text
+            acText.contains("- buyers should be able to see my stuff online") &&
+            acText.contains("- buyers should be able to buy my stuff") &&
+            acText.contains("- I should be able to get paid")
+
     }
 
 
     def "should find the parent requirement from a given issue"() {
         given:
-            def requirementsProvider = new JIRARequirementsProvider(configuration)
+            def requirementsProvider = new JIRARequirementsProvider(configuration,environmentVariables)
             def testOutcome = Mock(TestOutcome)
             testOutcome.getIssueKeys() >> ["TRAD-1"]
         when:
@@ -83,7 +122,7 @@ So that buyers can view and purchase my items"""
 
     def "should return Optional.absent() when no issues are specified"() {
         given:
-            def requirementsProvider = new JIRARequirementsProvider(configuration)
+            def requirementsProvider = new JIRARequirementsProvider(configuration,environmentVariables)
             def testOutcome = Mock(TestOutcome)
             testOutcome.getIssueKeys() >> []
         when:
@@ -94,7 +133,7 @@ So that buyers can view and purchase my items"""
 
     def "should return Optional.absent() for a non-existant issue"() {
         given:
-            def requirementsProvider = new JIRARequirementsProvider(configuration)
+            def requirementsProvider = new JIRARequirementsProvider(configuration,environmentVariables)
             def testOutcome = Mock(TestOutcome)
             testOutcome.getIssueKeys() >> ["UNKNOWN"]
         when:
@@ -105,7 +144,7 @@ So that buyers can view and purchase my items"""
 
     def "should find tags for a given issue"() {
         given:
-            def requirementsProvider = new JIRARequirementsProvider(configuration)
+            def requirementsProvider = new JIRARequirementsProvider(configuration, environmentVariables)
             def testOutcome = Mock(TestOutcome)
             testOutcome.getIssueKeys() >> ["TRAD-5"]
         when:
