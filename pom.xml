@@ -5,7 +5,7 @@
     <parent>
         <artifactId>thucydides</artifactId>
         <groupId>net.thucydides</groupId>
-        <version>0.9.235</version>
+        <version>0.9.236</version>
     </parent>
     <groupId>net.thucydides.plugins.jira</groupId>
     <artifactId>thucydides-jira-requirements-provider</artifactId>
@@ -17,7 +17,7 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <thucydides.version>0.9.236-SNAPSHOT</thucydides.version>
+        <thucydides.version>0.9.236</thucydides.version>
         <thucydides.jira.version>0.9.237-SNAPSHOT</thucydides.jira.version>
     </properties>
 
