@@ -107,7 +107,7 @@ public class JIRARequirementsProvider implements RequirementsTagProvider {
             try {
                 rootRequirementIssues = jiraClient.findByJQL(rootRequirementsJQL());
             } catch (JSONException e) {
-                logger.warn("No root requirements found", e);
+                logger.warn("No root requirements found (JQL = " + rootRequirementsJQL(), e);
             }
             requirements = convert(rootRequirementIssues, toRequirements());
         }
