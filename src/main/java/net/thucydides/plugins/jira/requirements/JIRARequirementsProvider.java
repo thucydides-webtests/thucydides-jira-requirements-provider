@@ -38,7 +38,7 @@ public class JIRARequirementsProvider implements RequirementsTagProvider {
     private final String projectKey;
     private final EnvironmentVariables environmentVariables;
 
-    private List<String> requirementsLinks = ImmutableList.of("Epic Link");
+    private List<String> requirementsLinks = ImmutableList.of("Epic Link", "parent");
     private final org.slf4j.Logger logger = LoggerFactory.getLogger(JIRARequirementsProvider.class);
 
     public JIRARequirementsProvider() {
@@ -183,7 +183,7 @@ public class JIRARequirementsProvider implements RequirementsTagProvider {
             public Requirement convert(IssueSummary childIssue) {
                 Requirement childRequirement = requirementFrom(childIssue);
                 if (moreRequirements(level)) {
-                    List<Requirement> grandChildren = findChildrenFor(childRequirement, 0);
+                    List<Requirement> grandChildren = findChildrenFor(childRequirement, level + 1);
                     childRequirement = childRequirement.withChildren(grandChildren);
                 }
                 return childRequirement;
