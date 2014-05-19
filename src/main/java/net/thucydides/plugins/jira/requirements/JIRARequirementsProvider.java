@@ -14,6 +14,7 @@ import net.thucydides.core.requirements.model.Requirement;
 import net.thucydides.core.util.EnvironmentVariables;
 import net.thucydides.plugins.jira.client.JerseyJiraClient;
 import net.thucydides.plugins.jira.domain.IssueSummary;
+import net.thucydides.plugins.jira.requirements.parallel.Parallel;
 import net.thucydides.plugins.jira.service.JIRAConfiguration;
 import net.thucydides.plugins.jira.service.SystemPropertiesJIRAConfiguration;
 import org.apache.commons.lang3.StringUtils;
@@ -23,10 +24,11 @@ import org.slf4j.LoggerFactory;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
-import static ch.lambdaj.Lambda.convert;
 import static net.thucydides.plugins.jira.requirements.JIRARequirementsConfiguration.JIRA_CUSTOM_FIELD;
 import static net.thucydides.plugins.jira.requirements.JIRARequirementsConfiguration.JIRA_CUSTOM_NARRATIVE_FIELD;
+
 
 /**
  * Integrate Thucydides reports with requirements, epics and stories in a JIRA server.
@@ -38,8 +40,12 @@ public class JIRARequirementsProvider implements RequirementsTagProvider {
     private final String projectKey;
     private final EnvironmentVariables environmentVariables;
 
+    private AtomicInteger currentJobCount = new AtomicInteger(0);
     private List<String> requirementsLinks = ImmutableList.of("Epic Link");
     private final org.slf4j.Logger logger = LoggerFactory.getLogger(JIRARequirementsProvider.class);
+
+    static int MAX_JOBS = 8;
+    static int BATCH_SIZE = 16;
 
     public JIRARequirementsProvider() {
         this(new SystemPropertiesJIRAConfiguration(Injectors.getInjector().getInstance(EnvironmentVariables.class)),
@@ -109,20 +115,19 @@ public class JIRARequirementsProvider implements RequirementsTagProvider {
             } catch (JSONException e) {
                 logger.warn("No root requirements found (JQL = " + rootRequirementsJQL(), e);
             }
-            requirements = convert(rootRequirementIssues, toRequirements());
+            requirements = Lists.newArrayList();
+            int threadCount = startJob();
+            Parallel.blockingFor(threadCount, rootRequirementIssues, new Parallel.Operation<IssueSummary>() {
+                @Override
+                public void perform(IssueSummary issue) {
+                    Requirement requirement = requirementFrom(issue);
+                    List<Requirement> childRequirements = findChildrenFor(requirement, 0);
+                    requirements.add(requirement.withChildren(childRequirements));
+                }
+            });
+            jobDone();
         }
         return requirements;
-    }
-
-    private Converter<IssueSummary, Requirement> toRequirements() {
-        return new Converter<IssueSummary, Requirement>() {
-            @Override
-            public Requirement convert(IssueSummary issue) {
-                Requirement requirement = requirementFrom(issue);
-                List<Requirement> childRequirements = findChildrenFor(requirement, 0);
-                return requirement.withChildren(childRequirements);
-            }
-        };
     }
 
     private Requirement requirementFrom(IssueSummary issue) {
@@ -162,14 +167,29 @@ public class JIRARequirementsProvider implements RequirementsTagProvider {
     }
 
 
-    private List<Requirement> findChildrenFor(Requirement parent, int level) {
+    private List<Requirement> findChildrenFor(Requirement parent, final int level) {
         List<IssueSummary> children = Lists.newArrayList();
         try {
             children = jiraClient.findByJQL(childIssuesJQL(parent, level));
         } catch (JSONException e) {
             logger.warn("No children found for requirement " + parent, e);
         }
-        return convert(children, toRequirementsWithChildren(level));
+        final List childRequirements = Lists.newArrayList();
+        int threadCount = startJob();
+        Parallel.blockingFor(threadCount, children, new Parallel.Operation<IssueSummary>() {
+            @Override
+            public void perform(IssueSummary issue) {
+                Requirement childRequirement = requirementFrom(issue);
+                if (moreRequirements(level)) {
+                    List<Requirement> grandChildren = findChildrenFor(childRequirement, 0);
+                    childRequirement = childRequirement.withChildren(grandChildren);
+                }
+                childRequirements.add(childRequirement);
+            }
+        });
+        jobDone();
+        return childRequirements;
+//        return convert(children, toRequirementsWithChildren(level));
     }
 
     private String childIssuesJQL(Requirement parent, int level) {
@@ -267,5 +287,15 @@ public class JIRARequirementsProvider implements RequirementsTagProvider {
             flattenedRequirements.addAll(getFlattenedRequirements(requirement.getChildren()));
         }
         return flattenedRequirements;
+    }
+
+    private int startJob() {
+        int runningJobs = currentJobCount.getAndIncrement();
+        int threadCount = (runningJobs <= MAX_JOBS) ? BATCH_SIZE : 1;
+        return threadCount;
+    }
+
+    private void jobDone() {
+        currentJobCount.decrementAndGet();
     }
 }
