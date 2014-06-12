@@ -90,6 +90,20 @@ public class JIRARequirementsProvider implements RequirementsTagProvider {
         return false;
     }
 
+    private String definedExcludeRequirementLabel(){
+        return environmentVariables.getProperty(
+                JIRARequirementsConfiguration.JIRA_EXCLUDE_REQUIREMENT_LABEL.getName());
+    }
+
+    private String excludeByLabelJQL(){
+        String labelForExclude = definedExcludeRequirementLabel();
+        if (StringUtils.isNotEmpty(labelForExclude)){
+            return " and (labels not in("+ labelForExclude + ") OR labels is EMPTY)";
+        } else {
+            return "";
+        }
+    }
+
     private void logConnectionDetailsFor(JIRAConfiguration jiraConfiguration) {
         logger.debug("JIRA URL: {0}", jiraConfiguration.getJiraUrl());
         logger.debug("JIRA project: {0}", jiraConfiguration.getProject());
@@ -173,7 +187,7 @@ public class JIRARequirementsProvider implements RequirementsTagProvider {
     }
 
     private String childIssuesJQL(Requirement parent, int level) {
-        return "'" + requirementsLinks.get(level) + "' = " + parent.getCardNumber();
+        return "'" + requirementsLinks.get(level) + "' = " + parent.getCardNumber() + excludeByLabelJQL();
     }
 
     private Converter<IssueSummary, Requirement> toRequirementsWithChildren(final int level) {
@@ -199,7 +213,7 @@ public class JIRARequirementsProvider implements RequirementsTagProvider {
     //////////////////////////////////////
 
     private String rootRequirementsJQL() {
-        return "issuetype = epic and project=" + getProjectKey();
+        return "issuetype = epic and project=" + getProjectKey() + excludeByLabelJQL();
     }
 
     @Override
