@@ -1,5 +1,6 @@
 package net.thucydides.plugins.jira
 
+import net.thucydides.core.requirements.model.Requirement
 import net.thucydides.core.util.MockEnvironmentVariables
 import net.thucydides.plugins.jira.requirements.JIRARequirementsProvider
 import net.thucydides.plugins.jira.service.JIRAConfiguration
@@ -23,13 +24,38 @@ class WhenReadingRequirementsFromJira extends Specification {
         requirementsProvider = new JIRARequirementsProvider(configuration)
     }
 
-    def "'Requirements can be loaded from the Epic/Story JIRA card structure"() {
+    def "Requirements can be loaded from the Epic/Story JIRA card structure"() {
         given:
             def requirementsProvider = new JIRARequirementsProvider(configuration)
         when:
             def requirements = requirementsProvider.getRequirements();
         then:
-            requirements.size() > 0
+            requirements.size() == 5
+        and:
+            totalNumberOf(requirements) == 27
+    }
+
+    def "Requirements can be loaded from a custom JIRA card structure"() {
+        given:
+        environmentVariables.setProperty("jira.root.issue.type","epic")
+        environmentVariables.setProperty("jira.requirement.links","Epic Link, relates to")
+        and:
+        def requirementsProvider = new JIRARequirementsProvider(configuration, environmentVariables)
+        when:
+        def requirements = requirementsProvider.getRequirements();
+        then:
+        totalNumberOf(requirements) == 29
+    }
+
+    def totalNumberOf(List<Requirement> requirements) {
+        int total = 0;
+        requirements.each {
+            total++;
+            if (it.children) {
+                total = total + totalNumberOf(it.children)
+            }
+        }
+        return total
     }
 
 
