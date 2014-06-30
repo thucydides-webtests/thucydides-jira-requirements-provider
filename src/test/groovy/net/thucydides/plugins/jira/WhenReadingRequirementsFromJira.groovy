@@ -35,6 +35,17 @@ class WhenReadingRequirementsFromJira extends Specification {
             totalNumberOf(requirements) == 27
     }
 
+    def "Child requirements should have parents"() {
+        given:
+        def requirementsProvider = new JIRARequirementsProvider(configuration)
+        when:
+        def requirements = requirementsProvider.getRequirements();
+        then:
+        def parent = requirements.get(0)
+        def firstChild = parent.getChildren().get(0)
+        firstChild.parent == parent.name
+    }
+
     def "Requirements can be loaded from a custom JIRA card structure"() {
         given:
         environmentVariables.setProperty("jira.root.issue.type","epic")

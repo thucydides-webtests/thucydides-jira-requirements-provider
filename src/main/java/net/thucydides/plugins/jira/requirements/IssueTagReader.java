@@ -52,9 +52,7 @@ public class IssueTagReader {
         String decodedIssueKey = decoded(issueKey);
         List<Requirement> parentRequirements = getParentRequirementsOf(decodedIssueKey);
         for (Requirement parentRequirement : parentRequirements) {
-            TestTag parentTag = TestTag.withName(parentRequirement.getName())
-                    .andType(parentRequirement.getType());
-            tags.add(parentTag);
+            tags.add(parentRequirement.asTag());
         }
         return this;
     }

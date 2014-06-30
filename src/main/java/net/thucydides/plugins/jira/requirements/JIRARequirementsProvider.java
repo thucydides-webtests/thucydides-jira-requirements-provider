@@ -54,7 +54,7 @@ public class JIRARequirementsProvider implements RequirementsTagProvider {
     private final  ListeningExecutorService executorService;
 
     private final AtomicInteger queueSize = new AtomicInteger(0);
-    static int DEFAULT_MAX_THREADS = 16;
+    static int DEFAULT_MAX_THREADS = 4;
 
     public JIRARequirementsProvider() {
         this(new SystemPropertiesJIRAConfiguration(Injectors.getInjector().getInstance(EnvironmentVariables.class)),
@@ -124,8 +124,6 @@ public class JIRARequirementsProvider implements RequirementsTagProvider {
     public List<Requirement> getRequirements() {
         if (requirements == null) {
 
-            final AtomicInteger reportCount = new AtomicInteger(0);
-
             List<IssueSummary> rootRequirementIssues;
             logger.info("Loading root requirements: " + rootRequirementsJQL());
             try {
@@ -168,10 +166,27 @@ public class JIRARequirementsProvider implements RequirementsTagProvider {
                 }, executorService);
 
             }
-
             waitTillEmpty(queueSize);
+            requirements = addParentsTo(requirements);
+
         }
         return requirements;
+    }
+
+    private List<Requirement> addParentsTo(List<Requirement> requirements) {
+        return addParentsTo(requirements, null);
+    }
+
+    private final List<Requirement> NO_REQUIREMENTS = ImmutableList.of();
+
+    private List<Requirement> addParentsTo(List<Requirement> requirements, String parent) {
+        List<Requirement> augmentedRequirements = Lists.newArrayList();
+        for(Requirement requirement : requirements) {
+            List<Requirement> children = requirement.hasChildren()
+                    ? addParentsTo(requirement.getChildren(),requirement.getName()) : NO_REQUIREMENTS;
+            augmentedRequirements.add(requirement.withParent(parent).withChildren(children));
+        }
+        return augmentedRequirements;
     }
 
     private Requirement requirementFrom(IssueSummary issue) {
@@ -220,7 +235,9 @@ public class JIRARequirementsProvider implements RequirementsTagProvider {
             logger.info("Loading child requirements for " + parent.getName() + " done: " + children.size());
         } catch (JSONException e) {
             logger.warn("No children found for requirement " + parent, e);
+            return NO_REQUIREMENTS;
         }
+
         final List<Requirement> childRequirements = Collections.synchronizedList(new ArrayList<Requirement>());
         for(IssueSummary childIssue : children) {
             Requirement childRequirement = requirementFrom(childIssue);
