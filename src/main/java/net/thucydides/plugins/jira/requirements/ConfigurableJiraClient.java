@@ -28,11 +28,11 @@ public class ConfigurableJiraClient extends JerseyJiraClient {
 
     public ConfigurableJiraClient(String url, String username, String password, String project) {
         super(url, username, password, project, customFields());
-        environmentVariables = Injectors.getInjector().getInstance(EnvironmentVariables.class);
+        environmentVariables = Injectors.getInjector().getProvider(EnvironmentVariables.class).get() ;
     }
 
     private static List<String> customFields() {
-        EnvironmentVariables environmentVariables = Injectors.getInjector().getInstance(EnvironmentVariables.class);
+        EnvironmentVariables environmentVariables = Injectors.getInjector().getProvider(EnvironmentVariables.class).get() ;
         return Lists.newArrayList();
     }
 

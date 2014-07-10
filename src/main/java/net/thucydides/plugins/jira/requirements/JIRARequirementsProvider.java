@@ -57,12 +57,12 @@ public class JIRARequirementsProvider implements RequirementsTagProvider {
     static int DEFAULT_MAX_THREADS = 4;
 
     public JIRARequirementsProvider() {
-        this(new SystemPropertiesJIRAConfiguration(Injectors.getInjector().getInstance(EnvironmentVariables.class)),
-                Injectors.getInjector().getInstance(EnvironmentVariables.class));
+        this(new SystemPropertiesJIRAConfiguration(Injectors.getInjector().getProvider(EnvironmentVariables.class).get() ),
+                Injectors.getInjector().getProvider(EnvironmentVariables.class).get() );
     }
 
     public JIRARequirementsProvider(JIRAConfiguration jiraConfiguration) {
-        this(jiraConfiguration, Injectors.getInjector().getInstance(EnvironmentVariables.class));
+        this(jiraConfiguration, Injectors.getInjector().getProvider(EnvironmentVariables.class).get() );
     }
 
     private int getMaxJobs() {
@@ -284,11 +284,13 @@ public class JIRARequirementsProvider implements RequirementsTagProvider {
 
     @Override
     public Optional<Requirement> getParentRequirementOf(TestOutcome testOutcome) {
+        logger.debug("Find parent requirement in JIRA for " + testOutcome.getTitle());
         List<String> issueKeys = testOutcome.getIssueKeys();
         if (!issueKeys.isEmpty()) {
             try {
                 Optional<IssueSummary> parentIssue = jiraClient.findByKey(issueKeys.get(0));
                 if (parentIssue.isPresent()) {
+                    logger.debug("Parent found: " + parentIssue.get());
                     return Optional.of(requirementFrom(parentIssue.get()));
                 } else {
                     return Optional.absent();
