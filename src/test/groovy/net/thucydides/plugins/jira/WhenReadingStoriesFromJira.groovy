@@ -94,12 +94,7 @@ class WhenReadingStoriesFromJira extends Specification {
         and:
             def requirement = requirementsProvider.getParentRequirementOf(testOutcome);
         then:
-            requirement.get().customFields == ["User Story", "Acceptance Criteria"]
-        and:
-            def userStoryText = requirement.get().getCustomField("User Story").get().text
-            userStoryText.contains("As a seller") &&
-            userStoryText.contains("I want to post my items for sale online") &&
-            userStoryText.contains("So that buyers can view and purchase my items")
+            requirement.get().customFields == ["Acceptance Criteria"]
         and:
             def acText = requirement.get().getCustomField("Acceptance Criteria").get().text
             acText.contains("- buyers should be able to see my stuff online") &&
@@ -151,7 +146,18 @@ class WhenReadingStoriesFromJira extends Specification {
             def tags = requirementsProvider.getTagsFor(testOutcome)
         then:
             tags.contains(TestTag.withName("Post item for sale").andType("Story")) &&
-            tags.contains(TestTag.withName("Selling stuff").andType("Epic"))
+            tags.contains(TestTag.withName("TRAD-4/Selling stuff").andType("Epic"))
+    }
+
+    def "should find tags for a story card"() {
+        given:
+        def requirementsProvider = new JIRARequirementsProvider(configuration, environmentVariables)
+        def testOutcome = Mock(TestOutcome)
+        testOutcome.getIssueKeys() >> ["TRAD-9"]
+        when:
+        def tags = requirementsProvider.getTagsFor(testOutcome)
+        then:
+        tags.contains(TestTag.withName("TRAD-9/Maintaining a watchlist").andType("Story"))
     }
 
 }

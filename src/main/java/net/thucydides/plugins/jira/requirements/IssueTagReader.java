@@ -50,7 +50,7 @@ public class IssueTagReader {
 
     public IssueTagReader addRequirementTags(String issueKey) {
         String decodedIssueKey = decoded(issueKey);
-        List<Requirement> parentRequirements = getParentRequirementsOf(decodedIssueKey);
+        List<Requirement> parentRequirements = getAssociatedRequirementsOf(decodedIssueKey);// getParentRequirementsOf(decodedIssueKey);
         for (Requirement parentRequirement : parentRequirements) {
             tags.add(parentRequirement.asTag());
         }
@@ -73,6 +73,17 @@ public class IssueTagReader {
 
     public List<TestTag> getTags() {
         return ImmutableList.copyOf(tags);
+    }
+
+    private List<Requirement> getAssociatedRequirementsOf(String issueKey) {
+        for (Requirement requirement : flattenedRequirements) {
+            if (requirement.getCardNumber().equalsIgnoreCase(issueKey)) {
+                List<Requirement> associatedRequirements = Lists.newArrayList(requirement);
+                associatedRequirements.addAll(getParentRequirementsOf(issueKey));
+                return ImmutableList.copyOf(associatedRequirements);
+            }
+        }
+        return ImmutableList.of();
     }
 
     private List<Requirement> getParentRequirementsOf(String issueKey) {
