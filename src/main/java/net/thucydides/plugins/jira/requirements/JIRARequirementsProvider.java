@@ -46,9 +46,7 @@ public class JIRARequirementsProvider implements RequirementsTagProvider {
     private final EnvironmentVariables environmentVariables;
 
     private final String EPIC_LINK = "Epic Link";
-    //private List<String> requirementsLinks = ImmutableList.of("Epic Link");
 
-    // issue in linkedIssues(TRAD-27,"relates to")
     private final org.slf4j.Logger logger = LoggerFactory.getLogger(JIRARequirementsProvider.class);
 
     private final  ListeningExecutorService executorService;
@@ -122,7 +120,8 @@ public class JIRARequirementsProvider implements RequirementsTagProvider {
 
     @Override
     public List<Requirement> getRequirements() {
-        if (requirements == null) {
+        requirements = persisted(requirements);
+        if ((requirements == null) && providerActivated()) {
 
             List<IssueSummary> rootRequirementIssues;
             logger.info("Loading root requirements: " + rootRequirementsJQL());
@@ -168,9 +167,25 @@ public class JIRARequirementsProvider implements RequirementsTagProvider {
             }
             waitTillEmpty(queueSize);
             requirements = addParentsTo(requirements);
+            persist(requirements);
 
         }
         return requirements;
+    }
+
+    private List<Requirement> persisted(List<Requirement> requirements) {
+        if (requirements != null) {
+            return requirements;
+        }
+        return null;
+    }
+
+    private void persist(List<Requirement> requirements) {
+
+    }
+
+    private boolean providerActivated() {
+        return environmentVariables.getPropertyAsBoolean("thucydides.providers.jira-requirements-provider", true);
     }
 
     private List<Requirement> addParentsTo(List<Requirement> requirements) {
@@ -286,7 +301,7 @@ public class JIRARequirementsProvider implements RequirementsTagProvider {
     public Optional<Requirement> getParentRequirementOf(TestOutcome testOutcome) {
         logger.debug("Find parent requirement in JIRA for " + testOutcome.getTitle());
         List<String> issueKeys = testOutcome.getIssueKeys();
-        if (!issueKeys.isEmpty()) {
+        if (!issueKeys.isEmpty() && providerActivated()) {
             try {
                 Optional<IssueSummary> parentIssue = jiraClient.findByKey(issueKeys.get(0));
                 if (parentIssue.isPresent()) {
@@ -332,10 +347,14 @@ public class JIRARequirementsProvider implements RequirementsTagProvider {
     }
 
     private Collection<? extends TestTag> tagsFromIssue(String issueKey) {
-        IssueTagReader tagReader = new IssueTagReader(jiraClient, getFlattenedRequirements(), projectKey);
-        return tagReader.addIssueTags(issueKey)
-                .addRequirementTags(issueKey)
-                .addVersionTags(issueKey).getTags();
+        if (providerActivated()) {
+            IssueTagReader tagReader = new IssueTagReader(jiraClient, getFlattenedRequirements(), projectKey);
+            return tagReader.addIssueTags(issueKey)
+                    .addRequirementTags(issueKey)
+                    .addVersionTags(issueKey).getTags();
+        } else {
+            return ImmutableList.of();
+        }
     }
 
     private List<Requirement> getFlattenedRequirements() {
